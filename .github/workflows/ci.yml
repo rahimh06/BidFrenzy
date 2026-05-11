@@ -1,0 +1,46 @@
+name: Auction System CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build-and-run:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    - name: Install Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gcc make libncurses5-dev libncursesw5-dev ipcrm
+
+    - name: Compile Project
+    # This runs your Makefile
+      run: make
+
+    - name: Run Automated Test
+      # Since ncurses requires a terminal, we use 'timeout' to run the 
+      # auction for 10 seconds and then force it to close so the Action finishes.
+      run: |
+        echo "Starting Auction Test..."
+        timeout 10s ./auction <<EOF
+        1
+        TestProduct
+        exit
+        EOF
+      continue-on-error: true
+
+    - name: Check for history.log
+      run: |
+        if [ -f history.log ]; then
+          echo "Success: Audit log was generated."
+          cat history.log
+        else
+          echo "Error: Logger failed to create history.log"
+          exit 1
+        fi
