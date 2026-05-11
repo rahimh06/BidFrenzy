@@ -12,7 +12,8 @@ jobs:
 
     steps:
     - name: Checkout Code
-      uses: actions/checkout@v3
+      # Updated to v4 to fix the Node.js warning
+      uses: actions/checkout@v4
 
     - name: Install Dependencies
       run: |
@@ -20,26 +21,25 @@ jobs:
         sudo apt-get install -y gcc make libncurses5-dev libncursesw5-dev ipcrm
 
     - name: Compile Project
-    # This runs your Makefile
       run: make
 
     - name: Run Automated Test
-      # Since ncurses requires a terminal, we use 'timeout' to run the 
-      # auction for 10 seconds and then force it to close so the Action finishes.
       run: |
         echo "Starting Auction Test..."
-        timeout 10s ./auction <<EOF
+        # We add '|| [ $? -eq 124 ]' or '|| true' to tell GitHub that 
+        # being killed by timeout is NOT a failure.
+        timeout 10s ./auction <<EOF || [ $? -eq 124 ]
         1
         TestProduct
         exit
         EOF
-      continue-on-error: true
-
+      
     - name: Check for history.log
       run: |
         if [ -f history.log ]; then
           echo "Success: Audit log was generated."
-          cat history.log
+          # Display the last few lines of the log to prove bots were bidding
+          tail -n 20 history.log
         else
           echo "Error: Logger failed to create history.log"
           exit 1
